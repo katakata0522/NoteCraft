@@ -1,8 +1,8 @@
 'use strict';
 
 var Core = globalThis.NoteCraftCore;
-if (!Core || window.__notecraft_v08_loaded) return;
-window.__notecraft_v08_loaded = true;
+var NC_SKIP = !Core || !!window.__notecraft_v08_loaded;
+if (!NC_SKIP) window.__notecraft_v08_loaded = true;
 
 var SNAPSHOT_INTERVAL_MS = 60000;
 var EDIT_IDLE_SAVE_MS = 5000;
