@@ -17,48 +17,39 @@
         <p class="lede">過去本文はnoteページから分離した拡張機能領域でのみ表示します。外部送信は行いません。</p>
       </div>
       <div class="privacy-stack">
-        <div class="privacy" aria-label="保存方式"><span class="privacy-dot" aria-hidden="true"></span>このブラウザ内のみ</div>
+        <div class="privacy"><span class="privacy-dot" aria-hidden="true"></span>このブラウザ内のみ</div>
         <div id="storageInfo" class="storage-info">使用量を確認中…</div>
       </div>
     </header>
 
-    <section class="status-card" aria-live="polite">
-      <div id="status" class="status">履歴を読み込んでいます…</div>
-    </section>
+    <section class="status-card"><div id="status" class="status" role="status">履歴を読み込んでいます…</div></section>
 
     <section class="workspace" aria-label="本文履歴の比較">
       <div class="history-pane">
-        <div class="section-head">
-          <div>
-            <h2>保存された世代</h2>
-            <p>比較元 A と比較先 B を選択します。</p>
-          </div>
-          <button id="refresh" class="secondary" type="button">再読込</button>
-        </div>
+        <div class="section-head"><div><h2>保存された世代</h2><p>比較元 A と比較先 B を選択します。</p></div><button id="refresh" class="secondary" type="button">再読込</button></div>
         <div id="history" class="history-list" role="list"></div>
       </div>
-
       <div class="compare-pane">
-        <div class="compare-actions">
-          <button id="compare" class="primary" type="button" disabled>選択した2世代を比較</button>
-          <button id="copySelected" class="secondary" type="button" disabled>比較先Bをコピー</button>
-        </div>
+        <div class="compare-actions"><button id="compare" class="primary" type="button" disabled>選択した2世代を比較</button><button id="copySelected" class="secondary" type="button" disabled>比較先Bをコピー</button></div>
         <div id="selectionSummary" class="selection-summary">2世代を選択すると差分を確認できます。</div>
         <div id="diff" class="diff" tabindex="0" aria-label="本文差分"></div>
       </div>
     </section>
 
-    <section class="danger-zone" aria-label="ローカル履歴の削除">
-      <div>
-        <strong>この原稿の過去履歴をリセット</strong>
-        <p>現在のnote本文は変更しません。保存済みの過去本文とTRACE基準を削除します。開いているnoteタブの自動保護は継続するため、その後は現在の本文から新しい履歴が作られます。</p>
-      </div>
+    <section class="danger-zone">
+      <div><strong>この原稿の過去履歴をリセット</strong><p>現在のnote本文は変更しません。保存済みの過去本文とTRACE基準を削除した後、開いているnoteタブでは現在本文から保護を再開します。</p></div>
       <button id="deleteHistory" class="danger" type="button">過去履歴をリセット</button>
     </section>
 
-    <footer class="footer">
-      <strong>現在の保護範囲:</strong> 本文テキストのみ。見出し書式・リンク・画像・埋め込み・タイトルは復元対象外です。保存データはChromeプロファイル内では暗号化せず保持されます。
-    </footer>
+    <footer class="footer"><strong>現在の保護範囲:</strong> 本文テキストのみ。見出し書式・リンク・画像・埋め込み・タイトルは復元対象外です。保存データはChromeプロファイル内では暗号化せず保持されます。</footer>
   </main>
+
+  <dialog id="deleteDialog" class="confirm-dialog" aria-labelledby="deleteDialogTitle">
+    <form method="dialog">
+      <h2 id="deleteDialogTitle">過去履歴を削除しますか？</h2>
+      <p>この原稿の保存済み本文履歴とTRACE基準を削除します。現在のnote本文は削除しません。この操作は取り消せません。</p>
+      <div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button id="confirmDelete" value="default" class="danger-solid">履歴を削除</button></div>
+    </form>
+  </dialog>
 </body>
 </html>
