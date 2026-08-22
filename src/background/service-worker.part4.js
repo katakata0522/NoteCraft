@@ -45,7 +45,23 @@ async function authorizeHistorySession(sender, token) {
 async function listSnapshotsForHistory(sender, token) { var s = await authorizeHistorySession(sender, token); return (await getSnapshotsRaw(s.articleId)).map(function (r) { return { ts: r.ts, charCount: r.charCount, kind: r.kind }; }); }
 async function getSnapshotForHistory(sender, token, ts) { var s = await authorizeHistorySession(sender, token); if (!validTimestamp(ts)) throw new Error('invalid timestamp'); var db = await openDB(); var tx = db.transaction('snapshots', 'readonly'); var done = txComplete(tx); var r = await reqPromise(tx.objectStore('snapshots').get([s.articleId, ts])); await done; if (!r) throw new Error('snapshot not found'); return r; }
 async function storageInfoForHistory(sender, token) { await authorizeHistorySession(sender, token); return getStorageInfo(); }
-async function closeHistorySession(sender, token) { historySenderContext(sender); await deleteHistorySession(token); return { closed: true }; }
+async function closeHistorySession(sender, token) {
+  var ctx = historySenderContext(sender);
+  if (!validHistoryToken(token)) return { closed: false };
+  var db = await openDB();
+  var tx = db.transaction('historySessions', 'readwrite');
+  var done = txComplete(tx);
+  var store = tx.objectStore('historySessions');
+  var row = await reqPromise(store.get(token));
+  if (!row) { await done; return { closed: false }; }
+  if (row.historyTabId != null && (row.historyTabId !== ctx.tabId || row.historyDocumentId !== ctx.documentId)) {
+    try { tx.abort(); } catch (_) {}
+    throw new Error('history session is bound to another tab');
+  }
+  store.delete(token);
+  await done;
+  return { closed: true };
+}
 
 async function deleteArticleHistoryForHistory(sender, token) {
   var session = await authorizeHistorySession(sender, token); var articleId = session.articleId; var db = await openDB();
