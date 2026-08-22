@@ -20,16 +20,18 @@ function routeTick() {
   attachEditor(route, editor);
 }
 
-chrome.runtime.onMessage.addListener(function (message, sender) {
-  if (!sender || sender.id !== chrome.runtime.id || !message || message.type !== 'NC_INTERNAL_HISTORY_RESET') return false;
-  var ctx = attached;
-  if (!ctx || message.articleId !== ctx.articleId || !isSameContext(ctx)) return false;
-  reseedAfterReset(ctx);
-  return false;
-});
+if (!NC_SKIP) {
+  chrome.runtime.onMessage.addListener(function (message, sender) {
+    if (!sender || sender.id !== chrome.runtime.id || !message || message.type !== 'NC_INTERNAL_HISTORY_RESET') return false;
+    var ctx = attached;
+    if (!ctx || message.articleId !== ctx.articleId || !isSameContext(ctx)) return false;
+    reseedAfterReset(ctx);
+    return false;
+  });
 
-setInterval(routeTick, ROUTE_POLL_MS);
-setInterval(function () { takeSnapshot('60秒', attached, 'checkpoint', false); }, SNAPSHOT_INTERVAL_MS);
-document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') takeSnapshot('非表示前', attached, 'rolling', false); });
-window.addEventListener('pagehide', function () { takeSnapshot('ページ離脱前', attached, 'rolling', false); });
-routeTick();
+  setInterval(routeTick, ROUTE_POLL_MS);
+  setInterval(function () { takeSnapshot('60秒', attached, 'checkpoint', false); }, SNAPSHOT_INTERVAL_MS);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') takeSnapshot('非表示前', attached, 'rolling', false); });
+  window.addEventListener('pagehide', function () { takeSnapshot('ページ離脱前', attached, 'rolling', false); });
+  routeTick();
+}
