@@ -14,21 +14,42 @@ var MUTATION_DEBOUNCE_MS = 350;
 var TRACE_DEBOUNCE_MS = 1200;
 var MESSAGE_TIMEOUT_MS = 12000;
 
-var host = null;
-var shadow = null;
-var ui = {};
-var generation = 0;
-var attached = null;
-var observer = null;
-var mutationTimer = null;
-var traceTimer = null;
-var editSaveTimer = null;
-var lastHref = location.href;
-var routeStableSince = performance.now();
-var lastEditorIdentityCheckAt = 0;
-var candidateEditor = null;
-var candidateSince = 0;
-var resolvingAttach = false;
+var host;
+var shadow;
+var ui;
+var generation;
+var attached;
+var observer;
+var mutationTimer;
+var traceTimer;
+var editSaveTimer;
+var lastHref;
+var routeStableSince;
+var lastEditorIdentityCheckAt;
+var candidateEditor;
+var candidateSince;
+var resolvingAttach;
+
+// Static content scripts are normally injected once per document, but keep a
+// real idempotency guard so a future manual/programmatic reinjection cannot
+// reset the state of an already-running NoteCraft instance.
+if (!NC_SKIP) {
+  host = null;
+  shadow = null;
+  ui = {};
+  generation = 0;
+  attached = null;
+  observer = null;
+  mutationTimer = null;
+  traceTimer = null;
+  editSaveTimer = null;
+  lastHref = location.href;
+  routeStableSince = performance.now();
+  lastEditorIdentityCheckAt = 0;
+  candidateEditor = null;
+  candidateSince = 0;
+  resolvingAttach = false;
+}
 
 function send(message) {
   return new Promise(function (resolve, reject) {
