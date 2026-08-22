@@ -49,9 +49,10 @@ function openDB() {
       reject(error);
     }
 
-    req.onupgradeneeded = function () {
+    req.onupgradeneeded = function (event) {
       var db = req.result;
       var tx = req.transaction;
+      var oldVersion = event && Number.isFinite(event.oldVersion) ? event.oldVersion : 0;
       var snapshots = db.objectStoreNames.contains('snapshots') ? tx.objectStore('snapshots') : db.createObjectStore('snapshots', { keyPath: ['articleId', 'ts'] });
       if (!snapshots.indexNames.contains('articleId')) snapshots.createIndex('articleId', 'articleId', { unique: false });
       var meta = db.objectStoreNames.contains('articleMeta') ? tx.objectStore('articleMeta') : db.createObjectStore('articleMeta', { keyPath: 'articleId' });
@@ -65,7 +66,7 @@ function openDB() {
       if (!sessions.indexNames.contains('sourceTabId')) sessions.createIndex('sourceTabId', 'sourceTabId', { unique: false });
       if (!db.objectStoreNames.contains('housekeeping')) db.createObjectStore('housekeeping', { keyPath: 'key' });
 
-      if (req.oldVersion < 8) {
+      if (oldVersion < 8) {
         sessions.clear();
         var cursorReq = meta.openCursor();
         cursorReq.onsuccess = function () {
