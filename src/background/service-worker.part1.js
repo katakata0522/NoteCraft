@@ -12,6 +12,7 @@ var DRAFT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 var DRAFT_CLAIM_WINDOW_MS = 2 * 60 * 1000;
 var ROLLING_COALESCE_MS = 60 * 1000;
 var HISTORY_SESSION_TTL_MS = 30 * 60 * 1000;
+var DB_OPEN_TIMEOUT_MS = 8000;
 var GC_ALARM = 'notecraft-daily-gc';
 var historyOpenCooldown = new Map();
 var dbPromise = null;
@@ -37,6 +38,17 @@ function openDB() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise(function (resolve, reject) {
     var req = indexedDB.open(DB_NAME, DB_VERSION);
+    var settled = false;
+    var blockedTimer = null;
+
+    function failOpen(error) {
+      if (settled) return;
+      settled = true;
+      if (blockedTimer) clearTimeout(blockedTimer);
+      dbPromise = null;
+      reject(error);
+    }
+
     req.onupgradeneeded = function () {
       var db = req.result;
       var tx = req.transaction;
@@ -70,11 +82,22 @@ function openDB() {
     };
     req.onsuccess = function () {
       var db = req.result;
+      if (settled) {
+        db.close();
+        return;
+      }
+      settled = true;
+      if (blockedTimer) clearTimeout(blockedTimer);
       db.onversionchange = function () { db.close(); dbPromise = null; };
       resolve(db);
     };
-    req.onerror = function () { dbPromise = null; reject(req.error || new Error('IndexedDB open failed')); };
-    req.onblocked = function () { dbPromise = null; reject(new Error('保存領域の更新がブロックされています。noteタブを再読み込みしてください')); };
+    req.onerror = function () { failOpen(req.error || new Error('IndexedDB open failed')); };
+    req.onblocked = function () {
+      if (blockedTimer || settled) return;
+      blockedTimer = setTimeout(function () {
+        failOpen(new Error('保存領域の更新が他のタブでブロックされています。noteタブまたは拡張機能を再読み込みしてください'));
+      }, DB_OPEN_TIMEOUT_MS);
+    };
   });
   return dbPromise;
 }
