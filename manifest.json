@@ -9,13 +9,7 @@
   "content_scripts": [
     {
       "matches": ["https://note.com/notes/*", "https://note.com/new", "https://editor.note.com/notes/*"],
-      "js": [
-        "src/shared/core.js",
-        "src/shared/storage-policy.js",
-        "src/content/content.part1.js",
-        "src/content/content.part2.js",
-        "src/content/content.part3.js"
-      ],
+      "js": ["src/shared/core.js", "src/shared/storage-policy.js", "src/content/content.js"],
       "run_at": "document_idle",
       "all_frames": false,
       "match_about_blank": false,
