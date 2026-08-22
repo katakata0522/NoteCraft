@@ -13,7 +13,10 @@ async function putHistorySession(articleId, sourceTabId) {
   var rows = await reqPromise(store.index('sourceTabId').getAll(sourceTabId));
   (rows || []).forEach(function (r) { if (!r.expiresAt || r.expiresAt <= now) store.delete(r.token); });
   var active = (rows || []).filter(function (r) { return r.expiresAt > now; });
-  if (active.length >= 3) { try { tx.abort(); } catch (_) {} throw new Error('履歴画面は同じnoteタブから3つまで開けます'); }
+  if (active.length >= 3) {
+    await done;
+    throw new Error('履歴画面は同じnoteタブから3つまで開けます');
+  }
   store.put({ token: token, articleId: articleId, sourceTabId: sourceTabId, historyTabId: null, historyDocumentId: null, createdAt: now, expiresAt: now + HISTORY_SESSION_TTL_MS });
   await done; return token;
 }
@@ -38,7 +41,10 @@ async function authorizeHistorySession(sender, token) {
   var db = await openDB(); var tx = db.transaction('historySessions', 'readwrite'); var done = txComplete(tx); var store = tx.objectStore('historySessions'); var row = await reqPromise(store.get(token));
   if (!row || row.expiresAt < Date.now()) { if (row) store.delete(token); await done; throw new Error('history session expired'); }
   if (row.historyTabId == null) { row.historyTabId = ctx.tabId; row.historyDocumentId = ctx.documentId; }
-  else if (row.historyTabId !== ctx.tabId || row.historyDocumentId !== ctx.documentId) { try { tx.abort(); } catch (_) {} throw new Error('history session is bound to another tab'); }
+  else if (row.historyTabId !== ctx.tabId || row.historyDocumentId !== ctx.documentId) {
+    await done;
+    throw new Error('history session is bound to another tab');
+  }
   row.expiresAt = Date.now() + HISTORY_SESSION_TTL_MS; store.put(row); await done; return row;
 }
 
@@ -55,7 +61,7 @@ async function closeHistorySession(sender, token) {
   var row = await reqPromise(store.get(token));
   if (!row) { await done; return { closed: false }; }
   if (row.historyTabId != null && (row.historyTabId !== ctx.tabId || row.historyDocumentId !== ctx.documentId)) {
-    try { tx.abort(); } catch (_) {}
+    await done;
     throw new Error('history session is bound to another tab');
   }
   store.delete(token);
