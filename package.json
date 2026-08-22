@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.8",
   "scripts": {
-    "test": "node tests/core.test.js && node tests/storage-policy.test.js && node tests/structure.test.js && node tests/security.test.js && node tests/service-worker.test.js",
+    "test": "node tests/browser-script-syntax.test.js && node tests/core.test.js && node tests/storage-policy.test.js && node tests/structure.test.js && node tests/security.test.js && node tests/service-worker.test.js",
     "check": "node --check src/shared/core.js && node --check src/shared/storage-policy.js && node --check src/background/service-worker.js && node --check src/background/service-worker.part1.js && node --check src/background/service-worker.part2.js && node --check src/background/service-worker.part3.js && node --check src/background/service-worker.part4.js && node --check src/background/service-worker.part5.js && node --check src/content/content.part1.js && node --check src/content/content.part2.js && node --check src/content/content.part3.js && node --check src/ui/history.js"
   },
   "devDependencies": {
