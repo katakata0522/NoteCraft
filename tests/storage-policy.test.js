@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('assert');
+const P=require('../src/shared/storage-policy.js');
+assert.strictEqual(P.fingerprintText('abc'),P.fingerprintText('abc'));
+assert.notStrictEqual(P.fingerprintText('abc'),P.fingerprintText('abd'));
+const now=Date.now();
+assert.strictEqual(P.shouldReplaceRolling({kind:'rolling',sourceSessionId:'a',ts:now-1000},'rolling','a',now,60000),true);
+assert.strictEqual(P.shouldReplaceRolling({kind:'rolling',sourceSessionId:'b',ts:now-1000},'rolling','a',now,60000),false);
+assert.strictEqual(P.shouldReplaceRolling({kind:'checkpoint',sourceSessionId:'a',ts:now-1000},'rolling','a',now,60000),false);
+assert.strictEqual(P.canWriteAtSafetyLimit(true,'1234',['12345']),true);
+assert.strictEqual(P.canWriteAtSafetyLimit(true,'123456',['12']),false);
+assert.strictEqual(P.canWriteAtSafetyLimit(false,'x',[]),true);
+console.log('storage-policy tests: OK');

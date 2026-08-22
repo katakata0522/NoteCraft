@@ -1,178 +1,53 @@
-# NoteCraft Spike v0.7 — Architecture
+# NoteCraft Spike v0.8 — Architecture
 
-## 1. 原則
+## 原則
 
-1. **SAVE優先**: TRACEやUIが壊れてもsnapshot保存を巻き込まない
-2. **Fail closed**: 記事IDに確信が持てなければ保存・移行しない
-3. **Content scriptを信頼しない**: privileged data accessはService Worker側で再認可
-4. **Local only**: 本文を外部ネットワークへ送らない
-5. **No editor writes**: note本文を自動書き換えしない
-6. **Spike scope**: 本文テキストの技術検証に限定
+1. SAVE優先: TRACE/UI障害でsnapshot保存を巻き込まない
+2. Fail closed: 記事IDやdraft対応に確信がなければ保存・移行しない
+3. Content scriptを低信頼境界として扱う
+4. Local only / no editor writes
+5. 障害時に「0」「保存済み」など誤解を招く状態を表示しない
 
-## 2. 構成
+## 保存モデル
 
-```text
-note editor DOM
-    ↓ read only
-content script
-    ↓ chrome.runtime.sendMessage
-service worker
-    ↓
-extension-origin IndexedDB
-```
+`snapshots`: `[articleId, ts]`。本文、charCount、kind、`sourceSessionId`を保存。
 
-### Content script
+`articleMeta`: 最新timestamp / kind / session / fingerprintのみ。本文全文は重複保持しない。
 
-- ProseMirror検知
-- Shadow DOM UI
-- route/DOM安定待ち
-- generation/contextチェック
-- MutationObserver
-- 5秒idle / 60秒 / visibility/pagehide snapshotトリガー
-- diff表示
-- TRACE表示
+`dayBases`: TRACE用。1記事最大2日。
 
-### Service Worker
+`tabDrafts`: 新規記事の一時ID mapping。
 
-- sender認証
-- route-bound authorization
-- IndexedDB保存
-- DB-level dedupe
-- monotonic snapshot timestamp
-- transaction内世代trim
-- draft mapping
-- safe draft claim / atomic migration
-- orphan draft GC
+`historySessions`: extension-origin履歴画面用の短命capability。
 
-## 3. IndexedDB
+## Multi-tab
 
-### snapshots
+各attachで`crypto.randomUUID()`によるeditor session IDを生成。rolling coalesceは同じ`sourceSessionId`のrollingだけを対象にする。別タブのrollingを削除しない。
 
-key: `[articleId, ts]`
+## 容量上限
 
-```js
-{
-  articleId,
-  ts,
-  text
-}
-```
+`navigator.storage.estimate()`で256MB以上なら新規増加を原則停止。ただし、同一session rolling置換や5世代trim等で解放される本文サイズ以上に増えない書き込みは許可する。dayBaseも同様。
 
-index:
+## TRACE
 
-- `articleId`
+小規模な変更領域はLCSでadded/removedを算出。差分中央部が大きい場合はprefix/suffixベースへfallbackし、UIに`≈`を表示して概算であることを明示する。
 
-### articleMeta
+## GC
 
-```js
-{
-  articleId,
-  lastText,
-  lastTs,
-  updatedAt,
-  isDraft
-}
-```
+`chrome.alarms`で日次実行。MV3 Service Workerのidle終了に定期GCを依存させない。
 
-`lastText` はsnapshot重複排除をtransaction内で完全一致判定するために保持します。Spikeでは容量効率より誤判定回避を優先します。
+## DB migration
 
-### dayBases
+DB v8で旧`articleMeta.lastText`をfingerprintへ変換後削除。history capabilityはschema/security変更時に持ち越さない。
 
-key: `[articleId, dateKey]`
+## Browser script validation
 
-TRACEの「本日初回観測時点比」算出用。
+content scriptはNodeのCommonJSとしてではなくChromeのclassic scriptとして実行される。`node --check`だけではトップレベル`return`等を見逃し得るため、CIでは`vm.Script`でも全extension scriptをparseする。
 
-### tabDrafts
+## GCの壊れ方への耐性
 
-新規記事が正式articleIdを持つ前の一時mapping。
+通常のdraft mapping/metaだけでなく、旧版・クラッシュ等でsnapshot/dayBaseだけ残った`draft:*`もkey-only scanで検出する。削除直前にはpayload timestampも含めてfreshnessを再評価し、最近のpayloadを誤削除しない。
 
-indexes:
+## 容量ガードの意味
 
-- `articleId`
-- `tabId`
-
-### housekeeping
-
-GCの最終実行時刻などを保存。
-
-## 4. SAVEのatomicity
-
-snapshot保存時は `snapshots + articleMeta` を同じreadwrite transactionで扱います。
-
-draftの場合は `tabDrafts` も同じtransactionへ含めます。
-
-これにより:
-
-- 同一本文の並行SAVE
-- migration直後のstale draft SAVE
-- tab/page遷移競合
-
-で孤児snapshotを作りにくくします。
-
-snapshot追加と「最大5世代」trimも同じtransactionです。
-
-## 5. SPA / 非同期race対策
-
-Content側:
-
-- URL変化を検知したtickでは再attachしない
-- route settle待ち
-- editor候補を一定時間再確認
-- generation tokenでstale callback破棄
-- async完了時にroute + editor identityを再確認
-
-Service Worker側:
-
-- MessageSenderの現在routeとarticleIdを再照合
-- stale contentから別記事IDへのSAVEを拒否
-
-## 6. Cross-origin draft claim
-
-新規作成ページと正式editorが別documentになる場合、content scriptのメモリ状態を引き継げません。
-
-そこで正式記事attach時に:
-
-1. 同tabIdの直近draft mappingを候補化
-2. `articleMeta.lastText === current editor text` の完全一致を要求
-3. migration transaction内でも同じ一致条件を再確認
-4. 合わなければmigrationしない
-
-誤移行のfalse positiveを避ける設計です。
-
-## 7. Draft GC
-
-- 30日以上活動のない `draft:*` を対象
-- 24時間に最大1回
-- snapshots / meta / dayBases / mappingを削除
-- Service Worker内ではGC promiseを共有して多重scanを防止
-
-## 8. データ精度
-
-### 文字数
-
-NFKCは使いません。
-
-`Ⅳ → IV` のように互換正規化で文字数そのものが変わるためです。
-
-現状:
-
-- zero-width文字を除外
-- 改行を除外
-- Unicode code point単位
-
-### diff
-
-LCSはUnicode code point単位で処理し、絵文字のsurrogate pairを分割しません。
-
-### TRACE
-
-「今日タイプした総量」ではなく、**本日初回観測時点の本文と現在本文との差**です。
-
-## 9. Known limitations
-
-- 本文テキストのみ
-- title / formatting / image / embed未保存
-- exact note character-count semantics未検証
-- pagehide/visibility SAVEはbest-effort
-- 5世代のみ
-- 実note E2E未検証
+256MBはChrome quotaそのものではなくNoteCraft側の保守的なsoft guard。上限到達時でも、同一session rolling置換や5世代trimで解放する本文payload以上に増えない書き込みは許可する。
