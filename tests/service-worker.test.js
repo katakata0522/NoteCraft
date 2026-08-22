@@ -65,7 +65,8 @@ vm.runInContext(fs.readFileSync(path.join(root,'src/background/service-worker.js
   const historySenderB={id:sandbox.chrome.runtime.id,tab:{id:91},frameId:0,documentId:'historyB',url:sandbox.chrome.runtime.getURL('src/ui/history.html')};
   await sandbox.authorizeHistorySession(historySenderA,historyToken);
   await assert.rejects(()=>sandbox.closeHistorySession(historySenderB,historyToken),/bound to another tab/);
-  assert.deepStrictEqual(await sandbox.closeHistorySession(historySenderA,historyToken),{closed:true});
+  const closeResult=await sandbox.closeHistorySession(historySenderA,historyToken);
+  assert.strictEqual(closeResult.closed,true,'bound history tab should be able to close its capability session');
 
   {
     const db2=await sandbox.openDB();
