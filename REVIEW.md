@@ -1,70 +1,39 @@
-# NoteCraft v0.5 → v0.7 辛口レビュー記録
+# NoteCraft v0.8 hardening review
 
-## P0 / P1で修正したもの
+v0.7の辛口レビューで確認したP0/P1/P2をまとめて修正した記録。
 
-### 1. draft migrationがdocumentId連続性に依存
+## P0
 
-**問題:** `note.com` → `editor.note.com` のようなcross-origin navigationではdocumentが変わり得るため、同一content lifecycle前提のmigrationは弱い。
+- 同一記事の複数タブrolling競合 → sourceSessionId単位coalesceへ変更
 
-**修正:** 同tabの直近draft + 最新本文完全一致でclaim。migration transaction内でも再検証。
+## P1
 
-### 2. migrationが複数transaction
+- 初期SAVE失敗で履歴UIまで失う → SAVE / HISTORY / TRACEを分離
+- 256MB上限が置換まで止める → freed payloadを考慮
+- dayBaseが上限を素通り → 同じ容量policyを適用
+- TRACE障害が+0/-0に見える → `—` + unavailable表示
+- 離れた複数変更のTRACE過大計上 → bounded LCS + 大差分は概算表示
+- 削除の2クリック誤発火 → native dialog確認
+- 削除後TRACE seed遅延 → 現在本文で即reseed
+- GCがService Worker寿命依存 → chrome.alarms
+- テスト不足 → GitHub Actions / policy / security / fake IndexedDB統合テスト
 
-**問題:** migrationの読み取りと書き込みの間にstale SAVEが挟まり、source draftを再生成し得る。
+## P2
 
-**修正:** snapshots/meta/dayBases/tabDraftsを1 readwrite transactionへ統合。draft SAVEもtabDraftsを同一transactionで検証するためmigrationと直列化。
+- 外部extension接続入口 → externally_connectableを明示的に閉じる
+- 250msごとの重いDOM検索 → route 500ms / editor identity 2秒へ分離
+- aria-liveノイズ → 通常自動SAVEは読み上げない
+- 小さく薄い補助文字 → font size / contrast改善
+- articleMeta本文重複 → fingerprint化
+- DB旧版migration → v7→v8 migration追加
 
-### 3. orphan draft GCなし
+## まだ残る検証
 
-**修正:** 30日TTL、24時間単位のGC。多重GCもcoalesce。
+実note DOM、新規記事遷移、clipboard、pagehide、Chrome再起動、複数タブ、undoへの影響は実ブラウザで要確認。
 
-### 4. MAX_SNAPSHOTSが仕様5→10へ逸脱
+## v0.8実装中に追加で捕捉した回帰
 
-**修正:** 5へ復帰。UI/DBとも統一。
-
-### 5. SAVEとTRACEをPromise.all
-
-**問題:** TRACE用dayBase失敗を「保存失敗」と誤表示し得る。
-
-**修正:** snapshot SAVEを先に独立完了させ、TRACEは非致命経路へ分離。
-
-### 6. content script注入範囲が広い
-
-**問題:** `https://note.com/*` はsingle purposeに対して過剰。
-
-**修正:** `note.com/notes/*`, `note.com/new`, `editor.note.com/notes/*` のみに縮小。
-
-### 7. NFKCを文字数へ使用
-
-**問題:** `Ⅳ` が `IV` に展開されるなど、文字数そのものが変わる。
-
-**修正:** NFKC廃止。zero-width除外 + Unicode code point単位。
-
-### 8. emoji diffがUTF-16単位
-
-**問題:** surrogate pair途中でdiffが分割される可能性。
-
-**修正:** LCS/prefix/suffixをUnicode code point配列で処理。
-
-### 9. MutationごとにIndexedDB dayBase読込
-
-**問題:** 執筆中の不要なruntime message/IDBアクセス。
-
-**修正:** dayBaseをattach contextへcache。日付が変わった場合だけ再取得。
-
-### 10. privileged message境界
-
-**強化:** sender.id / frameId / documentId / HTTPS host / editor route / articleId をService Workerで再検証。
-
-draft write authorizationはDB transaction内でmappingまで確認。
-
-## まだ「完成」と呼ばない理由
-
-- 実note DOM未検証
-- text-only backup
-- title / formatting / image / embed未対応
-- note公式文字数定義未照合
-- clipboard挙動の実note確認が必要
-- 新規記事遷移フローの実note確認が必要
-
-したがって正確な状態は **「静的レビュー済みSpike / 実note検証待ち」**。
+- content script分割時のトップレベル`return`がNode `--check`では検出できない可能性 → browser classic script parse testを追加し、guardをトップレベルreturnなしへ修正
+- IndexedDB `onblocked`後に遅れて成功したconnectionが未管理になる可能性 → settled state + timeout + late connection closeへ修正
+- GC簡略化でmetadata/mapping欠損の孤児payload検出を落としかけた → snapshot/dayBase key scanを復帰
+- history CLOSEだけcapability binding確認が弱くなっていた → history tab/document bindingを再検証してから破棄
