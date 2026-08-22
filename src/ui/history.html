@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NoteCraft 本文履歴</title>
+  <link rel="stylesheet" href="history.css">
+  <script src="../shared/core.js" defer></script>
+  <script src="history.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">NoteCraft · ローカル履歴</p>
+        <h1>本文履歴</h1>
+        <p class="lede">過去本文はnoteページから分離した拡張機能領域でのみ表示します。外部送信は行いません。</p>
+      </div>
+      <div class="privacy-stack">
+        <div class="privacy" aria-label="保存方式"><span class="privacy-dot" aria-hidden="true"></span>このブラウザ内のみ</div>
+        <div id="storageInfo" class="storage-info">使用量を確認中…</div>
+      </div>
+    </header>
+
+    <section class="status-card" aria-live="polite">
+      <div id="status" class="status">履歴を読み込んでいます…</div>
+    </section>
+
+    <section class="workspace" aria-label="本文履歴の比較">
+      <div class="history-pane">
+        <div class="section-head">
+          <div>
+            <h2>保存された世代</h2>
+            <p>比較元 A と比較先 B を選択します。</p>
+          </div>
+          <button id="refresh" class="secondary" type="button">再読込</button>
+        </div>
+        <div id="history" class="history-list" role="list"></div>
+      </div>
+
+      <div class="compare-pane">
+        <div class="compare-actions">
+          <button id="compare" class="primary" type="button" disabled>選択した2世代を比較</button>
+          <button id="copySelected" class="secondary" type="button" disabled>比較先Bをコピー</button>
+        </div>
+        <div id="selectionSummary" class="selection-summary">2世代を選択すると差分を確認できます。</div>
+        <div id="diff" class="diff" tabindex="0" aria-label="本文差分"></div>
+      </div>
+    </section>
+
+    <section class="danger-zone" aria-label="ローカル履歴の削除">
+      <div>
+        <strong>この原稿の過去履歴をリセット</strong>
+        <p>現在のnote本文は変更しません。保存済みの過去本文とTRACE基準を削除します。開いているnoteタブの自動保護は継続するため、その後は現在の本文から新しい履歴が作られます。</p>
+      </div>
+      <button id="deleteHistory" class="danger" type="button">過去履歴をリセット</button>
+    </section>
+
+    <footer class="footer">
+      <strong>現在の保護範囲:</strong> 本文テキストのみ。見出し書式・リンク・画像・埋め込み・タイトルは復元対象外です。保存データはChromeプロファイル内では暗号化せず保持されます。
+    </footer>
+  </main>
+</body>
+</html>
