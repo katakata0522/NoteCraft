@@ -1,9 +1,7 @@
 'use strict';
-
-// NoteCraft service worker entrypoint.
-// Split into classic worker scripts for maintainability; all parts share the same WorkerGlobalScope.
 importScripts(
   '../shared/core.js',
+  '../shared/storage-policy.js',
   'service-worker.part1.js',
   'service-worker.part2.js',
   'service-worker.part3.js',
