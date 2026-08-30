@@ -10,6 +10,7 @@ var ROUTE_POLL_MS = 500;
 var ROUTE_SETTLE_MS = 650;
 var EDITOR_CONFIRM_MS = 250;
 var EDITOR_IDENTITY_CHECK_MS = 2000;
+var EDITOR_MISSING_WARN_MS = 10000;
 var MUTATION_DEBOUNCE_MS = 350;
 var TRACE_DEBOUNCE_MS = 1200;
 var MESSAGE_TIMEOUT_MS = 12000;
@@ -28,11 +29,13 @@ var routeStableSince;
 var lastEditorIdentityCheckAt;
 var candidateEditor;
 var candidateSince;
+var editorMissingSince;
 var resolvingAttach;
 
 // Static content scripts are normally injected once per document, but keep a
 // real idempotency guard so a future manual/programmatic reinjection cannot
-// reset the state of an already-running NoteCraft instance.
+// reset the state of an already-running KakuSave instance. Internal NC names
+// intentionally stay stable so existing storage and message contracts migrate safely.
 if (!NC_SKIP) {
   host = null;
   shadow = null;
@@ -48,6 +51,7 @@ if (!NC_SKIP) {
   lastEditorIdentityCheckAt = 0;
   candidateEditor = null;
   candidateSince = 0;
+  editorMissingSince = 0;
   resolvingAttach = false;
 }
 
@@ -101,8 +105,8 @@ function buildUI() {
     '.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}',
     'button:focus-visible{outline:2px solid #16856f;outline-offset:2px}',
     '</style>',
-    '<div class="panel" id="panel" role="region" aria-label="NoteCraft 本文保護">',
-    '<div class="head"><div><span class="brand">NoteCraft</span><span class="badge">Spike v0.8</span></div><div class="head-actions"><button class="ghost" id="side" type="button" aria-label="パネルを反対側へ移動">左右</button><button class="ghost" id="toggle" type="button" aria-expanded="true">最小化</button></div></div>',
+    '<div class="panel" id="panel" role="region" aria-label="KakuSave 本文保護">',
+    '<div class="head"><div><span class="brand">KakuSave</span><span class="badge">Preview v0.9</span></div><div class="head-actions"><button class="ghost" id="side" type="button" aria-label="パネルを反対側へ移動">左右</button><button class="ghost" id="toggle" type="button" aria-expanded="true">最小化</button></div></div>',
     '<div class="body" id="body"><div class="count" id="count">—</div><div class="sub">現在の本文テキスト文字数</div>',
     '<div class="status-row"><div class="status" id="status">エディタを確認しています…</div><button class="save-now" id="saveNow" type="button" disabled>今すぐ保護</button></div>',
     '<div class="trace"><div class="metric"><div class="metric-label">追加差分</div><div class="metric-value" id="added">—</div></div><div class="metric"><div class="metric-label">削除差分</div><div class="metric-value" id="removed">—</div></div></div><div class="trace-note" id="traceNote">本日初回観測時点との本文差分</div>',
@@ -155,7 +159,7 @@ function friendlyError(error) {
   if (/timeout|タイムアウト/.test(detail)) return '保存処理が応答しませんでした。noteタブを再読み込みしてください';
   return 'ローカル保存で問題が発生しました。noteタブを再読み込みして再確認してください';
 }
-function showError(prefix, error) { console.warn('[NoteCraft]', prefix, error); setStatus(prefix + ': ' + friendlyError(error), 'error', true); }
+function showError(prefix, error) { console.warn('[KakuSave]', prefix, error); setStatus(prefix + ': ' + friendlyError(error), 'error', true); }
 
 function findEditor() {
   var primary = Array.prototype.slice.call(document.querySelectorAll('div.ProseMirror[contenteditable="true"]')).filter(function (el) { return document.documentElement.contains(el); });
@@ -181,7 +185,7 @@ function detach(reason) {
   if (mutationTimer) clearTimeout(mutationTimer); mutationTimer = null;
   if (traceTimer) clearTimeout(traceTimer); traceTimer = null;
   if (editSaveTimer) clearTimeout(editSaveTimer); editSaveTimer = null;
-  attached = null; candidateEditor = null; candidateSince = 0; resolvingAttach = false;
+  attached = null; candidateEditor = null; candidateSince = 0; editorMissingSince = 0; resolvingAttach = false;
   if (host) {
     ui.count.textContent = '—'; ui.added.textContent = '—'; ui.removed.textContent = '—'; ui.traceNote.textContent = '本日初回観測時点との本文差分';
     ui.history.textContent = ''; var empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = '記事を確認しています…'; ui.history.appendChild(empty);
