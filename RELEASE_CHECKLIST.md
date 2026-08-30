@@ -4,13 +4,15 @@
 
 ## 1. 自動検査
 
-- [ ] `npm run check`
-- [ ] `npm test`
-- [ ] GitHub Actions success
-- [ ] manifest version = `0.0.9`
-- [ ] 16 / 32 / 48 / 128px icon がpackage内に存在
-- [ ] `connect-src 'none'`
-- [ ] content script対象がnote編集ルートだけに限定
+- [x] `npm run check`
+- [x] `npm test`
+- [x] GitHub Actions success（run #36）
+- [x] manifest version = `0.0.9`
+- [x] 16 / 32 / 48 / 128px icon がpackage内に存在
+- [x] `connect-src 'none'`
+- [x] content script対象がnote編集ルートだけに限定
+- [x] `python3 build_release.py --check` でStore package入力構成を検証
+- [ ] `python3 build_release.py` で最終提出ZIPを生成し、`dist/KakuSave_v0.0.9.zip` を確認
 
 ## 2. 実Chrome / 実note 基本導線
 
@@ -74,15 +76,20 @@
 
 ## 6. Store提出前
 
-- [ ] `STORE_LISTING.md` とmanifestの説明が一致
-- [ ] 「完全復元」「絶対に消えない」等の保証表現がない
-- [ ] note公式製品ではないことを明記
-- [ ] プライバシーポリシー公開URLを用意
+- [x] `STORE_LISTING.md` とmanifestの説明が一致
+- [x] 「完全復元」「絶対に消えない」等の保証表現を避ける
+- [x] note公式製品ではないことを明記
+- [x] KatakataLab側に `https://katakatalab.com/privacy/kakusave/` を追加するPRを作成
+- [ ] `https://katakatalab.com/privacy/kakusave/` が本番でHTTP 200かつKakuSave内容として表示される
+- [ ] Chrome Web Store Developer Dashboardのデータ取扱い回答を公開Privacyと一致させる
 - [ ] Storeスクリーンショットで本文内容に個人情報を使わない
+- [ ] StoreスクリーンショットがKakuSave v0.9の実画面と一致する
 - [ ] Preview表記を正式公開時に外すか判断
 
 ## Release decision
 
 **1〜6の必須項目が通るまでは正式版として公開しない。**
+
+自動検査はrun #36で通過済みですが、実note E2Eと公開Privacy URLの本番確認を代替しません。
 
 失敗がnote DOM依存なら、無理にselectorを広げず実DOMを確認して最小範囲で対応する。`https://note.com/*` のような広域権限への拡張で解決しない。

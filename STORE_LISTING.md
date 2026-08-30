@@ -24,6 +24,10 @@ KakuSaveは、noteで長い文章を書くときのためのローカル履歴�
 ### プライバシー
 本文テキストは開発者サーバーへ送信しません。保存先はChrome拡張機能専用のIndexedDBです。KakuSaveからnote本文への自動書き戻しも行いません。
 
+公開Privacy URL: `https://katakatalab.com/privacy/kakusave/`
+
+**提出条件:** 上記URLがKatakataLab本番でHTTP 200かつKakuSaveの内容として表示されることを確認してからChrome Web Storeへ登録します。
+
 ### 保護範囲
 KakuSaveが保存するのは本文テキストのみです。タイトル、見出し書式、リンク属性、画像、埋め込み、noteエディタ内部構造の完全復元は対象外です。
 
@@ -48,3 +52,5 @@ Manifest V3 Service Workerの停止に依存せず、不要になった一時dra
 
 ## Reviewer note
 This extension only runs on note editor routes declared in `content_scripts.matches`. It does not request `<all_urls>`, does not inject into unrelated pages, and extension pages use `connect-src 'none'`.
+
+The public privacy policy is planned at `https://katakatalab.com/privacy/kakusave/`. Do not submit the Store item until that production URL is live and verified.
