@@ -6,11 +6,19 @@ const root = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
 assert.strictEqual(manifest.manifest_version, 3);
-assert.strictEqual(manifest.version, '0.0.8');
+assert.strictEqual(manifest.version, '0.0.9');
+assert.strictEqual(manifest.name, 'KakuSave - note本文バックアップ');
 assert.deepStrictEqual(manifest.permissions, ['unlimitedStorage', 'alarms']);
 assert.deepStrictEqual(manifest.externally_connectable, { ids: [] });
 assert.strictEqual(manifest.incognito, 'not_allowed');
 assert.ok(manifest.content_security_policy.extension_pages.includes("connect-src 'none'"));
+assert.ok(manifest.content_security_policy.extension_pages.includes("img-src 'self'"));
+
+for (const size of [16, 32, 48, 128]) {
+  const rel = manifest.icons[String(size)];
+  assert.ok(rel, `missing manifest icon ${size}`);
+  assert.ok(fs.existsSync(path.join(root, rel)), `missing icon file ${rel}`);
+}
 
 const matches = manifest.content_scripts[0].matches;
 assert.ok(!matches.includes('https://note.com/*'), 'content script scope must not be broad');
