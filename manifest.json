@@ -1,9 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "NoteCraft Spike",
-  "version": "0.0.8",
+  "name": "KakuSave - note本文バックアップ",
+  "version": "0.0.9",
   "minimum_chrome_version": "120",
-  "description": "note執筆中の本文テキストを拡張機能自身のローカル領域へ保存する技術検証版。外部送信なし・本文書き換えなし。",
+  "description": "note執筆中の本文テキスト履歴をブラウザ内に保存するローカルバックアップ。外部送信なし・本文書き換えなし。",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": ["unlimitedStorage", "alarms"],
   "background": { "service_worker": "src/background/service-worker.js" },
   "content_scripts": [
@@ -25,6 +31,6 @@
   "externally_connectable": { "ids": [] },
   "incognito": "not_allowed",
   "content_security_policy": {
-    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';"
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';"
   }
 }
