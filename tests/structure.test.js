@@ -52,4 +52,8 @@ assert.ok(swEntry.includes("../shared/storage-policy.js"));
 for (let i = 1; i <= 5; i++) assert.ok(swEntry.includes(`service-worker.part${i}.js`));
 assert.ok(!manifest.content_scripts[0].js.includes('src/content/content.js'), 'legacy content.js must not be loaded');
 
+const contentPart3 = fs.readFileSync(path.join(root, 'src/content/content.part3.js'), 'utf8');
+assert.ok(/visibilityState === 'hidden'\) return; takeSnapshot\('60秒'/.test(contentPart3), 'hidden tabs must skip the 60s checkpoint read');
+assert.ok(contentPart3.includes("takeSnapshot('非表示前'"), 'must still save right before the tab is hidden');
+
 console.log('structure tests: OK');

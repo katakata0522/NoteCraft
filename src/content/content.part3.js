@@ -41,7 +41,9 @@ if (!NC_SKIP) {
   });
 
   setInterval(routeTick, ROUTE_POLL_MS);
-  setInterval(function () { takeSnapshot('60秒', attached, 'checkpoint', false); }, SNAPSHOT_INTERVAL_MS);
+  // 非表示のタブは編集されないため、60秒ごとの本文読み取り（innerText）と保存処理を休ませる。
+  // 非表示になる直前には visibilitychange で必ず保存している。
+  setInterval(function () { if (document.visibilityState === 'hidden') return; takeSnapshot('60秒', attached, 'checkpoint', false); }, SNAPSHOT_INTERVAL_MS);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') takeSnapshot('非表示前', attached, 'rolling', false); });
   window.addEventListener('pagehide', function () { takeSnapshot('ページ離脱前', attached, 'rolling', false); });
   routeTick();
