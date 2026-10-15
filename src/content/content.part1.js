@@ -106,7 +106,7 @@ function buildUI() {
     'button:focus-visible{outline:2px solid #16856f;outline-offset:2px}',
     '</style>',
     '<div class="panel" id="panel" role="region" aria-label="KakuSave 本文保護">',
-    '<div class="head"><div><span class="brand">KakuSave</span><span class="badge">Preview v0.9</span></div><div class="head-actions"><button class="ghost" id="side" type="button" aria-label="パネルを反対側へ移動">左右</button><button class="ghost" id="toggle" type="button" aria-expanded="true">最小化</button></div></div>',
+    '<div class="head"><div><span class="brand">KakuSave</span><span class="badge">Preview v' + manifestVersion() + '</span></div><div class="head-actions"><button class="ghost" id="side" type="button" aria-label="パネルを反対側へ移動">左右</button><button class="ghost" id="toggle" type="button" aria-expanded="true">最小化</button></div></div>',
     '<div class="body" id="body"><div class="count" id="count">—</div><div class="sub">現在の本文テキスト文字数</div>',
     '<div class="status-row"><div class="status" id="status">エディタを確認しています…</div><button class="save-now" id="saveNow" type="button" disabled>今すぐ保護</button></div>',
     '<div class="trace"><div class="metric"><div class="metric-label">追加差分</div><div class="metric-value" id="added">—</div></div><div class="metric"><div class="metric-label">削除差分</div><div class="metric-value" id="removed">—</div></div></div><div class="trace-note" id="traceNote">本日初回観測時点との本文差分</div>',
@@ -144,6 +144,10 @@ function announce(text) {
   ui.announcer.textContent = '';
   setTimeout(function () { if (ui.announcer) ui.announcer.textContent = text; }, 0);
 }
+// 表示する版をmanifestと一致させる（以前は manifest 0.0.9 に対し「v0.9」と固定表示していた）
+function manifestVersion() {
+  try { return String(chrome.runtime.getManifest().version || '').replace(/[^0-9.]/g, ''); } catch (_) { return ''; }
+}
 function setStatus(text, kind, shouldAnnounce) {
   if (!host) return;
   ui.status.textContent = text;
@@ -159,7 +163,7 @@ function friendlyError(error) {
   if (/timeout|タイムアウト/.test(detail)) return '保存処理が応答しませんでした。noteタブを再読み込みしてください';
   return 'ローカル保存で問題が発生しました。noteタブを再読み込みして再確認してください';
 }
-function showError(prefix, error) { console.warn('[KakuSave]', prefix, error); setStatus(prefix + ': ' + friendlyError(error), 'error', true); }
+function showError(prefix, error) { console.debug('[KakuSave]', prefix, error); /* 失敗はパネルに案内済み。chrome://extensions の警告を増やさない */ setStatus(prefix + ': ' + friendlyError(error), 'error', true); }
 
 function findEditor() {
   var primary = Array.prototype.slice.call(document.querySelectorAll('div.ProseMirror[contenteditable="true"]')).filter(function (el) { return document.documentElement.contains(el); });

@@ -9,7 +9,8 @@ assert.strictEqual(manifest.manifest_version, 3);
 assert.strictEqual(manifest.version, '0.0.9');
 assert.strictEqual(manifest.name, 'KakuSave - note本文バックアップ');
 assert.deepStrictEqual(manifest.permissions, ['unlimitedStorage', 'alarms']);
-assert.deepStrictEqual(manifest.externally_connectable, { ids: [] });
+// 外部接続は書かないことで既定どおり拒否（ids: [] は Chrome で警告になるため削除）
+assert.strictEqual(manifest.externally_connectable, undefined);
 assert.strictEqual(manifest.incognito, 'not_allowed');
 assert.ok(manifest.content_security_policy.extension_pages.includes("connect-src 'none'"));
 assert.ok(manifest.content_security_policy.extension_pages.includes("img-src 'self'"));

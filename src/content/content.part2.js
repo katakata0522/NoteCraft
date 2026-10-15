@@ -1,3 +1,4 @@
+var EDITING_STATUS = '編集中… 入力が止まると数秒で自動保護します';
 'use strict';
 async function attachEditor(route, editor) {
   var gen = generation;
@@ -16,6 +17,8 @@ async function attachEditor(route, editor) {
 }
 
 function onEditorMutation() {
+  // 保存前の変更を「保護済み」と表示し続けないよう、編集中であることを示す（エラー表示は上書きしない）
+  if (ui.status && ui.status.className.indexOf('error') === -1 && ui.status.textContent !== EDITING_STATUS) setStatus(EDITING_STATUS, '', false);
   if (mutationTimer) clearTimeout(mutationTimer);
   mutationTimer = setTimeout(function () { if (attached && sameRouteAndNode(attached)) updateCount(); }, MUTATION_DEBOUNCE_MS);
   if (traceTimer) clearTimeout(traceTimer);
@@ -60,7 +63,7 @@ async function initializeAttached(ctx) {
 
 function markTraceUnavailable(error) {
   ui.added.textContent = '—'; ui.removed.textContent = '—'; ui.traceNote.textContent = 'TRACEを取得できません';
-  if (error) console.warn('[NoteCraft] TRACE', error);
+  if (error) console.debug('[NoteCraft] TRACE', error);
 }
 
 async function updateToday(ctx) {
