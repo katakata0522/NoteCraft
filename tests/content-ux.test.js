@@ -11,3 +11,7 @@ const mut = p2.slice(p2.indexOf('function onEditorMutation()'), p2.indexOf('func
 assert.ok(mut.includes('setStatus(EDITING_STATUS'), '保存前の編集中は「保護済み」と表示し続けない');
 assert.ok(mut.includes("indexOf('error') === -1"), 'エラー表示は編集で上書きしない');
 console.log('content-ux tests passed');
+// 履歴画面: 案内は赤い帯だけ。空欄は中立の一文のみ（二重表示しない）
+const hist = fs.readFileSync(path.join(__dirname, '../src/ui/history.js'), 'utf8');
+assert.ok(!hist.includes("renderEmpty('履歴を表示できません'"), '空欄に「表示できません」を重ねない');
+console.log('history empty-state test passed');
