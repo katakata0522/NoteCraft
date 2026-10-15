@@ -60,7 +60,7 @@ async function initializeAttached(ctx) {
 
 function markTraceUnavailable(error) {
   ui.added.textContent = '—'; ui.removed.textContent = '—'; ui.traceNote.textContent = 'TRACEを取得できません';
-  if (error) console.warn('[NoteCraft] TRACE', error);
+  if (error) console.debug('[NoteCraft] TRACE', error);
 }
 
 async function updateToday(ctx) {

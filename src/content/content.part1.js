@@ -159,7 +159,7 @@ function friendlyError(error) {
   if (/timeout|タイムアウト/.test(detail)) return '保存処理が応答しませんでした。noteタブを再読み込みしてください';
   return 'ローカル保存で問題が発生しました。noteタブを再読み込みして再確認してください';
 }
-function showError(prefix, error) { console.warn('[KakuSave]', prefix, error); setStatus(prefix + ': ' + friendlyError(error), 'error', true); }
+function showError(prefix, error) { console.debug('[KakuSave]', prefix, error); /* 失敗はパネルに案内済み。chrome://extensions の警告を増やさない */ setStatus(prefix + ': ' + friendlyError(error), 'error', true); }
 
 function findEditor() {
   var primary = Array.prototype.slice.call(document.querySelectorAll('div.ProseMirror[contenteditable="true"]')).filter(function (el) { return document.documentElement.contains(el); });
