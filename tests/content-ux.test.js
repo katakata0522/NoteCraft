@@ -15,3 +15,6 @@ console.log('content-ux tests passed');
 const hist = fs.readFileSync(path.join(__dirname, '../src/ui/history.js'), 'utf8');
 assert.ok(!hist.includes("renderEmpty('履歴を表示できません'"), '空欄に「表示できません」を重ねない');
 console.log('history empty-state test passed');
+const histHtml = fs.readFileSync(path.join(__dirname, '../src/ui/history.html'), 'utf8');
+assert.ok(histHtml.includes('<html lang="ja" translate="no">') && histHtml.includes('content="notranslate"'), '翻訳バブルを出さない');
+console.log('notranslate test passed');
