@@ -74,9 +74,9 @@
     selectionSummary.textContent = valid ? 'A '+Core.fmtDateTime(selectedA)+' → B '+Core.fmtDateTime(selectedB) : (snapshots.length < 2 ? '比較には2世代以上必要です。' : '異なる2世代を選択してください。');
   }
   function formatBytes(value) { if (!Number.isFinite(value)) return '不明'; if (value < 1024*1024) return Math.max(0,Math.round(value/1024))+'KB'; return (value/(1024*1024)).toFixed(value < 10*1024*1024 ? 1 : 0)+'MB'; }
-  async function loadStorageInfo() { if (!token) return; try { var info = await send({type:'NC_HISTORY_STORAGE',token:token}); storageInfoEl.textContent='NoteCraft使用量 '+formatBytes(info&&info.usage)+' / 安全上限 '+formatBytes(info&&info.safetyLimit); } catch (_) { storageInfoEl.textContent='ローカル使用量を取得できません'; } }
+  async function loadStorageInfo() { if (!token) return; try { var info = await send({type:'NC_HISTORY_STORAGE',token:token}); storageInfoEl.textContent='KakuSave使用量 '+formatBytes(info&&info.usage)+' / 安全上限 '+formatBytes(info&&info.safetyLimit); } catch (_) { storageInfoEl.textContent='ローカル使用量を取得できません'; } }
   async function loadList() {
-    if (!token) { setStatus('この画面はnote側の「安全な履歴画面を開く」から開いてください。','error'); refreshBtn.disabled=true; return; }
+    if (!token) { setStatus('この画面はnote側の「安全な履歴画面を開く」から開いてください。','error'); refreshBtn.disabled=true; deleteHistoryBtn.disabled=true; storageInfoEl.textContent=''; return; }
     refreshBtn.disabled=true;
     try { var rows = await send({type:'NC_HISTORY_LIST',token:token}); snapshots=Array.isArray(rows)?rows:[]; renderHistory(); setStatus(snapshots.length?'本文履歴を安全な拡張機能領域で読み込みました。':'まだ本文履歴がありません。'); loadStorageInfo(); }
     catch(error){setStatus(friendlyError(error),'error');historyEl.textContent='';compareBtn.disabled=true;copySelectedBtn.disabled=true;}
