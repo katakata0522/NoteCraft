@@ -53,7 +53,7 @@
   function renderHistory() {
     historyEl.textContent = '';
     if (!snapshots.length) {
-      var empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'まだ本文履歴がありません。'; historyEl.appendChild(empty);
+      renderEmpty('まだ保存された本文はありません', 'noteの編集画面で本文を書き進めると、KakuSaveが自動で保存します。数分書いてから「再読込」を押すと、ここに一覧が出ます。');
       compareBtn.disabled = true; copySelectedBtn.disabled = true; selectionSummary.textContent = '比較できる履歴がありません。'; return;
     }
     var rows = snapshots.slice().sort(function (a, b) { return b.ts - a.ts; });
@@ -68,6 +68,14 @@
     });
     copySelectedBtn.disabled = false; updateSelectionState();
   }
+  // 履歴がない／読み込めないときに、一覧が空白のままにならないよう案内を出す
+  function renderEmpty(title, hint) {
+    historyEl.textContent = '';
+    var empty = document.createElement('div'); empty.className = 'empty'; empty.setAttribute('role', 'note');
+    var strong = document.createElement('strong'); strong.className = 'empty-title'; strong.textContent = title;
+    var p = document.createElement('p'); p.className = 'empty-hint'; p.textContent = hint;
+    empty.appendChild(strong); empty.appendChild(p); historyEl.appendChild(empty);
+  }
   function makeChoice(labelText, groupName, ts, checked, onChange) {
     var label = document.createElement('label'); label.className = 'choice'; var input = document.createElement('input'); input.type = 'radio'; input.name = groupName; input.value = String(ts); input.checked = !!checked; input.setAttribute('aria-label','比較'+labelText+' '+Core.fmtDateTime(ts)); input.addEventListener('change',onChange); label.appendChild(input); label.appendChild(document.createTextNode('比較'+labelText)); return label;
   }
@@ -78,10 +86,10 @@
   function formatBytes(value) { if (!Number.isFinite(value)) return '不明'; if (value < 1024*1024) return Math.max(0,Math.round(value/1024))+'KB'; return (value/(1024*1024)).toFixed(value < 10*1024*1024 ? 1 : 0)+'MB'; }
   async function loadStorageInfo() { if (!token) return; try { var info = await send({type:'NC_HISTORY_STORAGE',token:token}); storageInfoEl.textContent='KakuSave使用量 '+formatBytes(info&&info.usage)+' / 安全上限 '+formatBytes(info&&info.safetyLimit); } catch (_) { storageInfoEl.textContent='ローカル使用量を取得できません'; } }
   async function loadList() {
-    if (!token) { setStatus('この画面はnote側の「安全な履歴画面を開く」から開いてください。','error'); refreshBtn.disabled=true; deleteHistoryBtn.disabled=true; storageInfoEl.textContent=''; return; }
+    if (!token) { renderEmpty('履歴を表示できません', 'noteの編集画面に出るKakuSaveのパネルで「安全な履歴画面を開く」を押して開いてください。'); setStatus('この画面はnote側の「安全な履歴画面を開く」から開いてください。','error'); refreshBtn.disabled=true; deleteHistoryBtn.disabled=true; storageInfoEl.textContent=''; return; }
     refreshBtn.disabled=true;
     try { var rows = await send({type:'NC_HISTORY_LIST',token:token}); snapshots=Array.isArray(rows)?rows:[]; renderHistory(); setStatus(snapshots.length?'本文履歴を安全な拡張機能領域で読み込みました。':'まだ本文履歴がありません。'); loadStorageInfo(); }
-    catch(error){setStatus(friendlyError(error),'error');historyEl.textContent='';compareBtn.disabled=true;copySelectedBtn.disabled=true;}
+    catch(error){setStatus(friendlyError(error),'error');renderEmpty('履歴を表示できません','note側から履歴画面を開き直すと、もう一度読み込みます。');compareBtn.disabled=true;copySelectedBtn.disabled=true;}
     finally{refreshBtn.disabled=false;}
   }
   function getSnapshot(ts){return send({type:'NC_HISTORY_GET',token:token,ts:ts});}

@@ -62,5 +62,12 @@ async function run({ snapshots, texts, clipboardFails = false, deleteFails = fal
     nodes.deleteDialog.returnValue = 'default'; nodes.deleteDialog.fire('close'); await wait();
     assert.match(nodes.status.textContent, /削除できませんでした/);
   }
+  {
+    const { nodes } = await run({ snapshots: [], texts: {} });
+    const empty = nodes.history.children.find(c => c.className === 'empty');
+    assert.ok(empty, '履歴が0件でも一覧が空白にならない');
+    assert.match(empty.children[0].textContent, /まだ保存された本文はありません/);
+    assert.match(empty.children[1].textContent, /再読込/);
+  }
   console.log('history-ui tests passed');
 })().catch(e => { console.error(e); process.exit(1); });
