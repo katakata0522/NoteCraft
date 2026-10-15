@@ -41,10 +41,12 @@
     });
   }
   function setStatus(text, kind) { statusEl.textContent = text; statusEl.className = kind === 'error' ? 'status error' : (kind === 'warn' ? 'status warn' : 'status'); }
-  function friendlyError(error) {
+  function friendlyError(error, action) {
     var text = error && error.message ? error.message : String(error || '');
     if (/expired|history session|token/i.test(text)) return 'この履歴画面の有効期限が切れました。note側から開き直してください。';
     if (/context invalidated|Receiving end/i.test(text)) return '拡張機能が更新された可能性があります。noteタブから開き直してください。';
+    if (action === 'copy') return 'コピーできませんでした。この画面を一度クリックしてから、もう一度「比較先Bをコピー」を押してください。';
+    if (action === 'delete') return '過去履歴を削除できませんでした。少し待ってからもう一度お試しください。';
     return '履歴を読み込めませんでした。note側から開き直してください。';
   }
   function kindLabel(kind) { return kind === 'rolling' ? '自動保護' : 'チェックポイント'; }
@@ -83,9 +85,9 @@
     finally{refreshBtn.disabled=false;}
   }
   function getSnapshot(ts){return send({type:'NC_HISTORY_GET',token:token,ts:ts});}
-  async function compareSelected(){if(compareBtn.disabled)return;compareBtn.disabled=true;diffEl.textContent='';setStatus('差分を計算しています…');try{var results=await Promise.all([getSnapshot(selectedA),getSnapshot(selectedB)]);var segs=Core.computeDisplayDiff(results[0].text||'',results[1].text||'',1200);segs.forEach(function(seg){if(!seg.text)return;var node=seg.type==='add'?document.createElement('ins'):seg.type==='del'?document.createElement('del'):document.createElement('span');node.textContent=seg.text;diffEl.appendChild(node);});setStatus('AからBへの本文テキスト差分を表示しています。');diffEl.focus({preventScroll:true});}catch(error){setStatus(friendlyError(error),'error');}finally{updateSelectionState();}}
-  async function copySelected(){if(!snapshots.length)return;copySelectedBtn.disabled=true;try{if(!Number.isFinite(selectedB))throw new Error('copy target missing');var snap=await getSnapshot(selectedB);await navigator.clipboard.writeText(snap.text||'');setStatus('比較先Bの本文テキストをクリップボードへコピーしました。');}catch(error){setStatus(friendlyError(error),'error');}finally{copySelectedBtn.disabled=false;}}
-  async function performDelete(){confirmDeleteBtn.disabled=true;deleteHistoryBtn.disabled=true;try{await send({type:'NC_HISTORY_DELETE_ALL',token:token});snapshots=[];selectedA=null;selectedB=null;diffEl.textContent='';renderHistory();setStatus('過去履歴をリセットしました。現在本文から保護を再開します。');await loadStorageInfo();}catch(error){setStatus(friendlyError(error),'error');}finally{confirmDeleteBtn.disabled=false;deleteHistoryBtn.disabled=false;}}
+  async function compareSelected(){if(compareBtn.disabled)return;compareBtn.disabled=true;diffEl.textContent='';setStatus('差分を計算しています…');try{var results=await Promise.all([getSnapshot(selectedA),getSnapshot(selectedB)]);var segs=Core.computeDisplayDiff(results[0].text||'',results[1].text||'',1200);var changed=segs.some(function(seg){return seg.text&&(seg.type==='add'||seg.type==='del');});segs.forEach(function(seg){if(!seg.text)return;var node=seg.type==='add'?document.createElement('ins'):seg.type==='del'?document.createElement('del'):document.createElement('span');node.textContent=seg.text;diffEl.appendChild(node);});setStatus(changed?'AからBへの本文テキスト差分を表示しています。':'AとBの本文テキストに違いはありません。');diffEl.focus({preventScroll:true});}catch(error){setStatus(friendlyError(error),'error');}finally{updateSelectionState();}}
+  async function copySelected(){if(!snapshots.length)return;copySelectedBtn.disabled=true;try{if(!Number.isFinite(selectedB))throw new Error('copy target missing');var snap=await getSnapshot(selectedB);await navigator.clipboard.writeText(snap.text||'');setStatus('比較先Bの本文テキストをクリップボードへコピーしました。');}catch(error){setStatus(friendlyError(error,'copy'),'error');}finally{copySelectedBtn.disabled=false;}}
+  async function performDelete(){confirmDeleteBtn.disabled=true;deleteHistoryBtn.disabled=true;try{await send({type:'NC_HISTORY_DELETE_ALL',token:token});snapshots=[];selectedA=null;selectedB=null;diffEl.textContent='';renderHistory();setStatus('過去履歴をリセットしました。現在本文から保護を再開します。');await loadStorageInfo();}catch(error){setStatus(friendlyError(error,'delete'),'error');}finally{confirmDeleteBtn.disabled=false;deleteHistoryBtn.disabled=false;}}
 
   refreshBtn.addEventListener('click',loadList);compareBtn.addEventListener('click',compareSelected);copySelectedBtn.addEventListener('click',copySelected);
   deleteHistoryBtn.addEventListener('click',function(){if(typeof deleteDialog.showModal==='function')deleteDialog.showModal();else if(confirm('過去履歴を削除しますか？'))performDelete();});
