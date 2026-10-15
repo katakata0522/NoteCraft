@@ -1,32 +1,26 @@
-# NoteCraft Spike v0.8
+# KakuSave Preview v0.9
 
-**状態:** 実装・静的テスト済み。GitHub ActionsでIndexedDB統合テストを実行する構成。実noteアカウント上のE2Eは未検証です。
+**note執筆中の本文テキストを、ブラウザ内だけに残すローカル履歴バックアップ。**
 
-需要検証前の技術Spikeです。完成度の高さ自体を事業継続理由にはしません。
+KakuSaveは、noteの編集画面で本文テキストを定期的にスナップショット保存し、過去本文の確認・比較・コピーをできるようにするChrome拡張です。note本体の保存機能を置き換えるものではなく、別系統のローカル保護層として動作します。
 
-## v0.8で重点的に直したこと
+> **公開状態:** コード・静的テスト・IndexedDB統合テスト済み。実noteアカウントでの最終E2Eはリリースゲートとして未完了です。
 
-- 同一記事を複数タブで編集しても、rolling snapshotは**同じeditor sessionのrollingだけ**を置換
-- 初期SAVE失敗時も既存履歴を読み込み、履歴画面から復旧可能
-- 256MB安全上限では、置換・trimで解放する容量を考慮してnet増加を抑制
-- TRACE用dayBaseにも同じ安全上限方針を適用
-- TRACE取得失敗を `0字` と偽装せず `—` 表示
-- 小規模な複数箇所編集はLCSでより正確に差分文字数を算出。大規模差分は `≈` を付けて概算と明示
-- 履歴削除をダブルクリック式から確認dialogへ変更
-- 履歴削除直後に現在本文をdayBase/checkpointとして再seed
-- draft GCをMV3 Service Workerの寿命に依存させず `chrome.alarms` で日次実行
-- `externally_connectable.ids=[]` で外部拡張からの接続をmanifestレベルでも閉じる
-- route監視と重いeditor identity確認の周期を分離
-- 自動SAVE成功をaria-liveへ流さず、エラー・手動操作だけ読み上げ
-- `articleMeta.lastText` を廃止し、fingerprint + latest snapshot exact compareへ移行
-- DB v7→v8 migrationで旧`lastText`を削除
-- GitHub Actions + browser-script/core/storage/security/IndexedDB統合テストを追加
-- metadata/mappingが欠損した孤児draft payloadも日次GCで検出
-- IndexedDB upgradeがblockedになった場合、遅れて開いたDB connectionをリークしないよう処理
+## KakuSaveが守るもの
 
-## 保護範囲
+- 5秒間編集が止まった後のrolling snapshot
+- 60秒ごとのcheckpoint
+- タブ非表示・ページ離脱前のbest-effort保存
+- 同一記事を複数タブで開いた場合のsession分離
+- 新規記事から正式記事IDへ移る際の完全一致ベースの安全な履歴移行
+- 保存済み本文の世代比較・コピー
+- 当日初回観測時点からの追加/削除文字数
 
-保存するのは **本文テキストのみ** です。タイトル、見出し書式、リンク属性、画像、埋め込み、ProseMirror内部構造の完全復元は対象外です。
+## 守らないもの
+
+保存対象は **本文テキストのみ** です。タイトル、見出し書式、リンク属性、画像、埋め込み、ProseMirror内部構造の完全復元は対象外です。
+
+また、KakuSaveはnoteの公式機能ではありません。note側の画面構造変更で本文エディタを検出できなくなった場合、10秒後に互換性警告を表示します。
 
 ## セキュリティ / プライバシー
 
@@ -40,18 +34,34 @@
 - `externally_connectable.ids=[]`
 - `unlimitedStorage`を使用しつつ自前256MB安全上限を設置
 
-## 実noteでの最重要チェック
+## v0.9での公開前ブラッシュアップ
 
-- [ ] 空の新規記事でパネルが出る
+- 製品名を既存同名製品と衝突するNoteCraftから **KakuSave** へ変更
+- Chrome Web Store提出用16/32/48/128pxアイコンを追加
+- manifest / package / UI / 履歴画面のブランドを同期
+- note本文エディタを10秒以上検出できない場合に、DOM互換性警告を表示
+- CIでmanifest名・version・アイコン実在を検査
+- 公開用Store文言と手動E2Eリリースゲートを明文化
+
+内部の `NC_*` message名、`NoteCraftCore`、既存IndexedDB schemaは、既存データとの互換性を守るためv0.9では意図的に変更しません。
+
+## リリースゲート: 実note E2E
+
+以下がすべて通るまで正式公開扱いにしません。
+
+- [ ] 空の新規記事でKakuSaveパネルが出る
 - [ ] 5秒idle / 60秒 checkpoint / 非表示前best-effort保存が動く
 - [ ] 同じ記事を2タブで編集しても、一方のrolling履歴がもう一方に消されない
 - [ ] 記事A→B高速遷移で履歴が混ざらない
 - [ ] 新規記事→正式ID移行で完全一致時のみdraft履歴が移る
 - [ ] SAVE失敗時でも既存履歴を開ける
 - [ ] TRACE失敗時は0ではなく`—`になる
-- [ ] 履歴削除は確認dialogを経由し、削除直後から現在本文の保護が再開する
+- [ ] 履歴削除後、現在本文から保護が再開する
 - [ ] Chrome再起動後も履歴が残る
 - [ ] note本体の入力・保存・undoを壊さない
+- [ ] エディタを意図的に検出不能にしたfixtureで10秒後に互換性警告が出る
+
+詳細は `RELEASE_CHECKLIST.md` を参照してください。
 
 ## ローカルテスト
 
@@ -61,4 +71,4 @@ npm run check
 npm test
 ```
 
-実note E2Eが通るまでは「完成品」ではなくSpikeです。
+KakuSaveは現時点では需要検証前のPreviewです。実note E2Eと初期ユーザーテストが通るまでは、完成度の高さだけを事業継続理由にしません。

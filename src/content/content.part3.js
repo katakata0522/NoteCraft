@@ -2,9 +2,10 @@
 function routeTick() {
   if (location.href !== lastHref) { lastHref = location.href; routeStableSince = performance.now(); detach('ページ遷移を確認中…'); return; }
   var route = currentRoute();
-  if (!route) { if (attached) detach('note編集画面でのみ動作します'); if (host) host.style.display = 'none'; return; }
+  if (!route) { editorMissingSince = 0; if (attached) detach('note編集画面でのみ動作します'); if (host) host.style.display = 'none'; return; }
   buildUI(); host.style.display = '';
   if (attached) {
+    editorMissingSince = 0;
     if (!sameRouteAndNode(attached)) { detach('エディタの更新を確認中…'); routeStableSince = performance.now(); return; }
     if (performance.now() - lastEditorIdentityCheckAt >= EDITOR_IDENTITY_CHECK_MS) {
       lastEditorIdentityCheckAt = performance.now();
@@ -14,7 +15,17 @@ function routeTick() {
   }
   if (resolvingAttach || performance.now() - routeStableSince < ROUTE_SETTLE_MS) return;
   var editor = findEditor();
-  if (!editor) { candidateEditor = null; candidateSince = 0; setStatus('本文エディタを待っています…'); return; }
+  if (!editor) {
+    candidateEditor = null; candidateSince = 0;
+    if (!editorMissingSince) editorMissingSince = performance.now();
+    if (performance.now() - editorMissingSince >= EDITOR_MISSING_WARN_MS) {
+      setStatus('本文エディタを検出できません。note側の画面構造が変わった可能性があります', 'warn');
+    } else {
+      setStatus('本文エディタを待っています…');
+    }
+    return;
+  }
+  editorMissingSince = 0;
   if (editor !== candidateEditor) { candidateEditor = editor; candidateSince = performance.now(); return; }
   if (performance.now() - candidateSince < EDITOR_CONFIRM_MS) return;
   attachEditor(route, editor);
