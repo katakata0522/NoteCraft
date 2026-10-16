@@ -82,7 +82,9 @@ var store = {
   openHistory: function (articleId) { return send({ type: 'NC_OPEN_HISTORY', articleId: articleId }); },
   saveSnapshot: function (articleId, text, mode, sessionId) { return send({ type: 'NC_SAVE_SNAP', articleId: articleId, text: text, mode: mode, sessionId: sessionId }); },
   getDayBase: function (articleId, dateKey) { return send({ type: 'NC_GET_DAYBASE', articleId: articleId, dateKey: dateKey }); },
-  ensureDayBase: function (articleId, dateKey, baseText) { return send({ type: 'NC_ENSURE_DAYBASE', articleId: articleId, dateKey: dateKey, baseText: baseText }); }
+  ensureDayBase: function (articleId, dateKey, baseText) { return send({ type: 'NC_ENSURE_DAYBASE', articleId: articleId, dateKey: dateKey, baseText: baseText }); },
+  getPanelPrefs: function () { return send({ type: 'NC_GET_PANEL_PREFS' }); },
+  setPanelPrefs: function (prefs) { return send({ type: 'NC_SET_PANEL_PREFS', prefs: prefs }); }
 };
 
 function buildUI() {
@@ -104,9 +106,11 @@ function buildUI() {
     '.history-open{width:100%;margin-top:9px;border:0;border-radius:9px;background:#16856f;color:#fff;padding:9px 10px;font-size:12px;font-weight:700;cursor:pointer}.history-open:disabled{opacity:.38;cursor:default}.empty{font-size:12px;color:#737e79;padding:5px 0}.foot{font-size:11px;line-height:1.5;color:#68736f;margin-top:10px}',
     '.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}',
     'button:focus-visible{outline:2px solid #16856f;outline-offset:2px}',
+    '.mini-status{display:none;align-items:center;gap:5px;font-size:11px;color:#46534e;margin-left:8px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}.panel.minimized .mini-status{display:inline-flex}.panel.minimized .badge{display:none}',
+    '.mini-dot{width:7px;height:7px;border-radius:50%;background:#16856f;flex:none}.mini-status.editing .mini-dot{background:#9aa5a1}.mini-status.warn{color:#755313}.mini-status.warn .mini-dot{background:#d99a1e}.mini-status.error{color:#91302b}.mini-status.error .mini-dot{background:#c2413a}',
     '</style>',
     '<div class="panel" id="panel" role="region" aria-label="KakuSave 本文保護">',
-    '<div class="head"><div><span class="brand">KakuSave</span><span class="badge">Preview v' + manifestVersion() + '</span></div><div class="head-actions"><button class="ghost" id="side" type="button" aria-label="パネルを反対側へ移動">左右</button><button class="ghost" id="toggle" type="button" aria-expanded="true">最小化</button></div></div>',
+    '<div class="head"><div><span class="brand">KakuSave</span><span class="badge">Preview v' + manifestVersion() + '</span><span class="mini-status" id="miniStatus" aria-hidden="true"><span class="mini-dot"></span><span id="miniText">確認中…</span></span></div><div class="head-actions"><button class="ghost" id="side" type="button" aria-label="パネルを反対側へ移動">左右</button><button class="ghost" id="toggle" type="button" aria-expanded="true">最小化</button></div></div>',
     '<div class="body" id="body"><div class="count" id="count">—</div><div class="sub">現在の本文テキスト文字数</div>',
     '<div class="status-row"><div class="status" id="status">エディタを確認しています…</div><button class="save-now" id="saveNow" type="button" disabled>今すぐ保護</button></div>',
     '<div class="trace"><div class="metric"><div class="metric-label">追加差分</div><div class="metric-value" id="added">—</div></div><div class="metric"><div class="metric-label">削除差分</div><div class="metric-value" id="removed">—</div></div></div><div class="trace-note" id="traceNote">本日初回観測時点との本文差分</div>',
@@ -116,15 +120,19 @@ function buildUI() {
     '<div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div></div>'
   ].join('');
   document.documentElement.appendChild(host);
-  ['panel','body','count','status','added','removed','traceNote','history','historyOpen','saveNow','announcer'].forEach(function (id) { ui[id] = shadow.getElementById(id); });
+  ['panel','body','count','status','added','removed','traceNote','history','historyOpen','saveNow','announcer','miniStatus','miniText','toggle'].forEach(function (id) { ui[id] = shadow.getElementById(id); });
 
-  shadow.getElementById('toggle').addEventListener('click', function () {
-    var hidden = ui.body.style.display === 'none';
-    ui.body.style.display = hidden ? '' : 'none';
-    this.textContent = hidden ? '最小化' : '開く';
-    this.setAttribute('aria-expanded', hidden ? 'true' : 'false');
+  ui.toggle.addEventListener('click', function () {
+    setMinimized(ui.body.style.display !== 'none');
+    savePanelPrefs();
   });
-  shadow.getElementById('side').addEventListener('click', function () { ui.panel.classList.toggle('left'); });
+  shadow.getElementById('side').addEventListener('click', function () { ui.panel.classList.toggle('left'); savePanelPrefs(); });
+  // 前回の最小化・左右を復元する（拡張機能内の IndexedDB に保存。失敗しても既定表示のまま動く）
+  store.getPanelPrefs().then(function (prefs) {
+    if (!prefs || !host) return;
+    ui.panel.classList.toggle('left', prefs.side === 'left');
+    setMinimized(prefs.minimized === true);
+  }).catch(function () {});
   ui.saveNow.addEventListener('click', async function () {
     ui.saveNow.disabled = true;
     try { await takeSnapshot('手動', attached, 'checkpoint', true); } finally { if (attached) ui.saveNow.disabled = false; }
@@ -139,6 +147,33 @@ function buildUI() {
   });
 }
 
+function setMinimized(minimized) {
+  if (!ui.body) return;
+  ui.body.style.display = minimized ? 'none' : '';
+  ui.panel.classList.toggle('minimized', minimized);
+  ui.toggle.textContent = minimized ? '開く' : '最小化';
+  ui.toggle.setAttribute('aria-expanded', minimized ? 'false' : 'true');
+}
+function savePanelPrefs() {
+  if (!ui.panel) return;
+  store.setPanelPrefs({ minimized: ui.panel.classList.contains('minimized'), side: ui.panel.classList.contains('left') ? 'left' : 'right' }).catch(function () {});
+}
+// 最小化中も保存状態が分かるよう、見出しに短い状態を出す
+function updateMiniStatus(text, kind) {
+  if (!ui.miniStatus) return;
+  var t = String(text || '');
+  var time = t.match(/\d{1,2}:\d{2}(?::\d{2})?/);
+  var label;
+  var cls = 'mini-status';
+  if (kind === 'error') { label = '保存エラー'; cls += ' error'; }
+  else if (kind === 'warn') { label = '要確認'; cls += ' warn'; }
+  else if (t.indexOf('編集中') === 0) { label = '編集中…'; cls += ' editing'; }
+  else if (/保護済み|チェックポイント確定|保存済み|保護を再開/.test(t)) label = '保護済み' + (time ? ' ' + time[0] : '');
+  else { label = t.length > 10 ? t.slice(0, 10) + '…' : t; cls += ' editing'; }
+  ui.miniStatus.className = cls;
+  ui.miniText.textContent = label;
+  ui.miniStatus.title = t;
+}
 function announce(text) {
   if (!ui.announcer) return;
   ui.announcer.textContent = '';
@@ -152,6 +187,7 @@ function setStatus(text, kind, shouldAnnounce) {
   if (!host) return;
   ui.status.textContent = text;
   ui.status.className = kind === 'error' ? 'status error' : (kind === 'warn' ? 'status warn' : 'status');
+  updateMiniStatus(text, kind);
   if (shouldAnnounce) announce(text);
 }
 function friendlyError(error) {

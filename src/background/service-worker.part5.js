@@ -152,6 +152,27 @@ chrome.runtime.onStartup.addListener(function () { ensureGcAlarm().catch(functio
 chrome.alarms.onAlarm.addListener(function (alarm) { if (alarm && alarm.name === GC_ALARM) runGc().catch(function () {}); });
 ensureGcAlarm().catch(function () {});
 
+// パネルの表示状態（最小化・左右）だけを既存の housekeeping ストアに保存する。本文やURLは含めない。
+var PANEL_PREFS_KEY = 'panelPrefs';
+function normalizePanelPrefs(row) {
+  return { minimized: !!(row && row.minimized === true), side: row && row.side === 'left' ? 'left' : 'right' };
+}
+async function getPanelPrefs() {
+  var db = await openDB();
+  var tx = db.transaction('housekeeping', 'readonly');
+  var row = await reqPromise(tx.objectStore('housekeeping').get(PANEL_PREFS_KEY));
+  return normalizePanelPrefs(row);
+}
+async function setPanelPrefs(prefs) {
+  if (!prefs || typeof prefs !== 'object') throw new Error('invalid panel prefs');
+  var next = normalizePanelPrefs(prefs);
+  var db = await openDB();
+  var tx = db.transaction('housekeeping', 'readwrite');
+  tx.objectStore('housekeeping').put({ key: PANEL_PREFS_KEY, minimized: next.minimized, side: next.side, updatedAt: Date.now() });
+  await txComplete(tx);
+  return next;
+}
+
 async function handleMessage(msg, sender) {
   if (!msg || typeof msg.type !== 'string' || msg.type.indexOf('NC_') !== 0) throw new Error('invalid message');
   if (msg.type.indexOf('NC_HISTORY_') === 0) {
@@ -170,6 +191,8 @@ async function handleMessage(msg, sender) {
   if (msg.type === 'NC_SAVE_SNAP') return saveSnapshot(ctx, msg.articleId, msg.text, msg.mode, msg.sessionId);
   if (msg.type === 'NC_GET_DAYBASE') return getDayBase(ctx, msg.articleId, msg.dateKey);
   if (msg.type === 'NC_ENSURE_DAYBASE') return ensureDayBase(ctx, msg.articleId, msg.dateKey, msg.baseText);
+  if (msg.type === 'NC_GET_PANEL_PREFS') return getPanelPrefs();
+  if (msg.type === 'NC_SET_PANEL_PREFS') return setPanelPrefs(msg.prefs);
   throw new Error('unknown message type');
 }
 
